@@ -41,6 +41,7 @@ usuarios_coleccion = db["Usuarios"]
 marcadores_coleccion = db["Marcadores"]
 visitas_coleccion = db["Visitas"]
 
+
 app = FastAPI()
 
 # --- CONFIGURACIÓN DE MIDDLEWARE (IMPORTANTE) ---
