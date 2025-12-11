@@ -39,6 +39,7 @@ mapas_coleccion = db["Mapas"]
 archivos_coleccion = db["Archivos"]
 usuarios_coleccion = db["Usuarios"]
 marcadores_coleccion = db["Marcadores"]
+visitas_coleccion = db["Visitas"]
 
 app = FastAPI()
 
@@ -70,7 +71,6 @@ def get_user(request: Request):
     return request.session.get('user')
 
 # --- RUTAS DE AUTENTICACIÓN (ADAPTADAS) ---
-
 @app.post("/login")
 async def login(data: TokenData, request: Request):
     """
@@ -78,33 +78,24 @@ async def login(data: TokenData, request: Request):
     y crea la sesión de usuario.
     """
     try:
-        # 1. Verificar el token con los servidores de Google
-        id_info = id_token.verify_oauth2_token(
-            data.token, 
-            google_requests.Request(), 
-            client_id
-        )
-
-        # 2. Si el token es válido, extraemos la info
+        id_info = id_token.verify_oauth2_token(data.token, google_requests.Request(), client_id)
+        
         user_info = {
             "google_id": id_info.get("sub"),
             "email": id_info.get("email"),
             "name": id_info.get("name"),
-            "picture": id_info.get("picture")
+            "picture": id_info.get("picture"),
+            "raw_token": data.token  # <--- NUEVO: Guardamos el token para el registro
         }
-
-        # 3. (OPCIONAL) Aquí podrías guardar o actualizar el usuario en tu MongoDB
-        # await usuarios.update_one({"email": user_info["email"]}, {"$set": user_info}, upsert=True)
-
-        # 4. Guardamos al usuario en la cookie de SESIÓN
-        request.session['user'] = user_info
         
+        request.session['user'] = user_info
         return RedirectResponse(url='/mapa', status_code=303)
-
+        
     except ValueError as e:
         # El token es falso, expiró o el client_id no coincide
         print(f"Error validando token: {e}")
         raise HTTPException(status_code=401, detail="Token inválido")
+
 
 @app.get("/logout")
 async def logout(request: Request):
@@ -126,15 +117,35 @@ async def home(request: Request, user: dict = Depends(get_user)):
 
 ############## MAPAS Y MARCADORES ################
 @app.get("/mapa")
-async def ver_mapa(request: Request, user: dict = Depends(get_user)):
-    """
-    Vista principal: Muestra el mapa con los marcadores del usuario.
-    """
-    # 1. Recuperamos los marcadores de la BD usando la misma lógica que el endpoint
+async def ver_mapa(
+    request: Request, 
+    email_destino: Optional[str] = None, # <--- Parametro opcional para visitar a otro
+    user: dict = Depends(get_user)
+):
+    if not user:
+        return RedirectResponse("/")
+
+    # 1. Determinar de quién es el mapa que vamos a ver
+    # Si no pasan email_destino, vemos el nuestro.
+    email_propietario_mapa = email_destino if email_destino else user["email"]
+    
+    # 2. Verificar si soy el dueño
+    es_propietario = (email_propietario_mapa == user["email"])
+
+    # 3. REGISTRAR VISITA (Solo si visito a otro)
+    if not es_propietario:
+        nueva_visita = {
+            "email_visitado": email_propietario_mapa,
+            "email_visitante": user["email"],
+            "token_visitante": user.get("raw_token", "No disponible"), # El token OAuth
+            "fecha": datetime.now()
+        }
+        await visitas_coleccion.insert_one(nueva_visita)
+
+    # 4. Recuperar marcadores (del propietario del mapa)
     marcadores_list = []
-    cursor = marcadores_coleccion.find({"email_usuario": user["email"]})
+    cursor = marcadores_coleccion.find({"email_usuario": email_propietario_mapa})
     async for doc in cursor:
-        # Convertimos a formato usable en JS: lat, lon, ciudad, imagen
         marcadores_list.append({
             "ciudad": doc["ciudad_pais"],
             "lat": doc["latitud"],
@@ -142,11 +153,28 @@ async def ver_mapa(request: Request, user: dict = Depends(get_user)):
             "img": doc.get("imagen_url", "")
         })
 
-    # 2. Renderizamos el HTML pasando la lista de marcadores
+    # 5. RECUPERAR HISTORIAL DE VISITAS (Ordenadas de reciente a antigua)
+    # Mostramos las visitas que ha RECIBIDO este mapa
+    lista_visitas = []
+    cursor_visitas = visitas_coleccion.find(
+        {"email_visitado": email_propietario_mapa}
+    ).sort("fecha", -1) # -1 es descendente (más reciente primero)
+    
+    async for visita in cursor_visitas:
+        lista_visitas.append({
+            "fecha": visita["fecha"].strftime("%Y-%m-%d %H:%M:%S"),
+            "email_visitante": visita["email_visitante"],
+            "token": visita["token_visitante"] # Ojo: los tokens son muy largos
+        })
+
+    # 6. Renderizar template pasando las nuevas variables
     return templates.TemplateResponse("mapa.html", {
         "request": request,
-        "email_usuario": user["email"],
-        "marcadores": marcadores_list
+        "user": user,                # El usuario logueado (quien mira)
+        "email_mapa": email_propietario_mapa, # De quién es el mapa
+        "es_propietario": es_propietario,     # Booleano para ocultar/mostrar cosas
+        "marcadores": marcadores_list,
+        "visitas": lista_visitas      # Lista para la tabla inferior
     })
 
 @app.post("/marcadores", tags=["Marcadores"])

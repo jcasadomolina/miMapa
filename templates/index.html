@@ -58,6 +58,16 @@
         </style>
 
         <a href="/mapa" class="boton boton-mapa">Ir al Mapa</a>
+        <hr>
+        <h3>Visitar el mapa de un amigo</h3>
+        <form action="/mapa" method="get" class="row g-3">
+            <div class="col-auto">
+                <input type="email" name="email_destino" class="form-control" placeholder="amigo@gmail.com" required>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-info">Ver Mapa</button>
+            </div>
+        </form>
         <a href="/logout" class="boton boton-logout">Cerrar Sesión</a>
     {% else %}
         <div
