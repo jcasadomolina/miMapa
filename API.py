@@ -33,7 +33,7 @@ client_id = env('CLIENT_ID')
 
 # --- CONFIGURACIÓN DE BASE DE DATOS (Mantenemos tu código) ---
 client = motor.AsyncIOMotorClient(uri)
-db = client["examen"]
+db = client["MiMapa"]
 coleccion1 = db["Tabla1"]
 mapas_coleccion = db["Mapas"]
 archivos_coleccion = db["Archivos"]
