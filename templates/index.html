@@ -31,11 +31,34 @@
     
     {% if user %}
         <h2>Bienvenido, {{ user.name }}</h2>
-        <img src="{{ user.picture }}" width="50">
-        <br>
-        <a href="/mapa">Ir al Mapa</a>
-        <br>
-        <a href="/logout">Cerrar Sesión</a>
+        <img src="{{ user.picture }}" width="50" style="border-radius: 50%;">
+        <br><br>
+
+        <style>
+            .boton {
+                display: inline-block;
+                padding: 10px 20px;
+                text-decoration: none;
+                color: white;
+                border-radius: 5px;
+                font-family: Arial, sans-serif;
+                margin: 5px;
+                font-weight: bold;
+            }
+            .boton-mapa {
+                background-color: #007bff; /* Azul */
+            }
+            .boton-logout {
+                background-color: #dc3545; /* Rojo */
+            }
+            /* Efecto al pasar el mouse */
+            .boton:hover {
+                opacity: 0.8;
+            }
+        </style>
+
+        <a href="/mapa" class="boton boton-mapa">Ir al Mapa</a>
+        <a href="/logout" class="boton boton-logout">Cerrar Sesión</a>
     {% else %}
         <div
           id="g_id_onload"
