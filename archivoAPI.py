@@ -49,7 +49,6 @@ database = client[nombre_basedatos][nombre_coleccion]
 app = FastAPI()
 
 origins = [
-    # Incluir el origen exacto que está dando el error
     "http://127.0.0.1:8000",  
     "http://localhost:8000",
     "http://127.0.0.1:8001",  
@@ -66,7 +65,7 @@ origins = [
     "http://localhost:8006",
 ]
 
-# --- CONFIGURACIÓN CORS PERMISIVA (SOLUCIÓN) ---
+# --- CONFIGURACIÓN CORS PERMISIVA ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],      # <--- El asterisco permite CUALQUIER origen (IP/Puerto)
@@ -80,14 +79,11 @@ path = "/v2/archivo"
 
 async def upload_image(archivo_id: str, file: UploadFile):
     try:
-        # Regresamos el cursor al inicio por seguridad
         await file.seek(0)
         
-        # CORRECCIÓN: Usamos 'public_id' y 'folder'
-        # Quitamos el try/except silencioso para ver si falla aquí
         upload_result = cloudinary.uploader.upload(
             file.file,
-            public_id=str(archivo_id),  # <--- CORREGIDO: public_id
+            public_id=str(archivo_id),  
             folder="archivos", # Carpeta en Cloudinary
             resource_type="auto"
         )
@@ -95,9 +91,7 @@ async def upload_image(archivo_id: str, file: UploadFile):
         return upload_result["secure_url"]
 
     except Exception as e:
-        # Imprimimos el error REAL en la consola para que lo veas
         print(f"ERROR CLOUDINARY: {e}")
-        # Re-lanzamos el error para que el endpoint se entere y falle
         raise e
 
 
@@ -181,7 +175,6 @@ async def eliminar_Archivo(archivo_id: str):
     if not archivo:
         raise HTTPException(status_code=404, detail="Archivo no encontrado en BD")
 
-    # --- BLOQUE DE BORRADO CLOUDINARY MEJORADO ---
     try:
         # 1. Construimos el ID esperado
         public_id = f"archivos/{archivo_id}" #Ruta en Cloudinary
@@ -197,7 +190,6 @@ async def eliminar_Archivo(archivo_id: str):
 
     except Exception as e:
         print(f"ERROR CRÍTICO EN CLOUDINARY: {e}")
-    # ---------------------------------------------
 
     resultado = await database.delete_one({"_id": obj_id})
     if resultado.deleted_count == 0:
