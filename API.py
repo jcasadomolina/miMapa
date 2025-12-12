@@ -154,19 +154,23 @@ async def ver_mapa(
             "img": doc.get("imagen_url", "")
         })
 
-    # 5. RECUPERAR HISTORIAL DE VISITAS (Ordenadas de reciente a antigua)
-    # Mostramos las visitas que ha RECIBIDO este mapa
+    # 5. RECUPERAR HISTORIAL DE VISITAS
+    #print(f"--- BUSCANDO VISITAS PARA: {email_propietario_mapa} ---") # <--- DEBUG 1
+    
     lista_visitas = []
     cursor_visitas = visitas_coleccion.find(
         {"email_visitado": email_propietario_mapa}
-    ).sort("fecha", -1) # -1 es descendente (más reciente primero)
+    ).sort("fecha", -1)
     
     async for visita in cursor_visitas:
+        #print(f" > Encontrada visita de: {visita['email_visitante']}") # <--- DEBUG 2
         lista_visitas.append({
             "fecha": visita["fecha"].strftime("%Y-%m-%d %H:%M:%S"),
             "email_visitante": visita["email_visitante"],
-            "token": visita["token_visitante"] # Ojo: los tokens son muy largos
+            "token": visita["token_visitante"]
         })
+
+    #print(f"--- TOTAL VISITAS ENCONTRADAS: {len(lista_visitas)} ---") # <--- DEBUG 3
 
     # 6. Renderizar template pasando las nuevas variables
     return templates.TemplateResponse("mapa.html", {

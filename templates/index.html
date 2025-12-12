@@ -27,7 +27,7 @@
     </script>
   </head>
   <body>
-    <h1>Mi App con FastAPI</h1>
+    <h1>Bienvenido a MiMapa</h1>
     
     {% if user %}
         <h2>Bienvenido, {{ user.name }}</h2>
@@ -76,7 +76,7 @@
           data-callback="handleCredentialResponse"
           data-client_id="{{ client_id }}" 
         ></div>
-        <div class="g_id_signin" data-type="standard"></div>
+        <div class="g_id_signin" data-type="standard" data-size="medium"></div>
     {% endif %}
   </body>
 </html>
